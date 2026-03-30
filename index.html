@@ -615,8 +615,12 @@ async function aiExtractQuestions(text, fileName, code) {
   if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`API ${res.status}: ${e.error?.message||'Unknown'}`); }
 
   const data = await res.json();
+  if (!data.content) throw new Error('No content in API response');
   const raw = data.content.map(c => c.text||'').join('');
-  const arr = JSON.parse(raw.replace(/```json|```/g, '').trim());
+  let arr;
+  try {
+    arr = JSON.parse(raw.replace(/```json|```/g, '').trim());
+  } catch { throw new Error('AI returned invalid JSON: ' + raw.substring(0, 100)); }
   if (!Array.isArray(arr)) throw new Error('Bad response');
 
   const md = getModuleData(code);
@@ -646,9 +650,18 @@ async function aiExtractMS(text, fileName, code) {
     })
   });
 
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(`API ${res.status}: ${errData.error?.message || 'Unknown error'}`);
+  }
+
   const data = await res.json();
+  if (!data.content) throw new Error('No content in API response');
   const raw = data.content.map(c => c.text||'').join('');
-  const matches = JSON.parse(raw.replace(/```json|```/g, '').trim());
+  let matches;
+  try {
+    matches = JSON.parse(raw.replace(/```json|```/g, '').trim());
+  } catch { throw new Error('AI returned invalid JSON for mark scheme'); }
   let matched = 0;
   if (Array.isArray(matches)) matches.forEach(m => { if (m.questionIndex>=0 && m.questionIndex<qs.length && m.answer) { qs[m.questionIndex].answer = m.answer; matched++; } });
   md.questions = qs;
