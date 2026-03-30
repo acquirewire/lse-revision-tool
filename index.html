@@ -580,7 +580,7 @@ async function aiExtractQuestions(text, fileName, code) {
   const topicList = info.topics.map((t, i) => `${i}: ${t}`).join('\n');
   const truncated = text.length > 40000 ? text.substring(0, 40000) + '\n[...truncated]' : text;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -614,7 +614,7 @@ async function aiExtractMS(text, fileName, code) {
   const ref = qs.map((q,i) => `[${i}] Q${q.questionNumber}: ${q.text.substring(0,100)}`).join('\n');
   const truncated = text.length > 40000 ? text.substring(0, 40000) + '\n[...truncated]' : text;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('/api/claude', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -644,7 +644,7 @@ async function genAnswer(code, qi) {
   const info = MODULES[code], topic = q.topicIndex>=0 ? info.topics[q.topicIndex] : 'General';
   showModal(`<div class="modal-title">Generate Answer</div><div class="modal-subtitle">${esc(q.text.substring(0,200))}${q.text.length>200?'...':''}</div><div style="text-align:center;padding:32px"><div class="spinner" style="width:32px;height:32px;border-width:3px"></div><p style="margin-top:16px;color:var(--gray-400);font-size:13px">Generating answer...</p></div>`);
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json'},
+    const res = await fetch('/api/claude', { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2048,
         system: `Expert LSE ${code} (${info.fullName}) tutor. Provide exam-ready model answers. Show all working for calculations.`,
         messages: [{ role:'user', content:`Topic: ${topic}\n\nQuestion: ${q.text}\n\nFull model answer:` }] }) });
