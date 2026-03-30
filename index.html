@@ -404,12 +404,12 @@ function renderModule(code) {
   if (processingState && processingState.total > 0) {
     const pct = Math.round((processingState.done / processingState.total) * 100);
     const items = processingState.files.map(f => {
-      const statusClass = f.status === 'extracting' ? 'status-extracting' : f.status === 'sending' ? 'status-sending' : f.status === 'done' ? 'status-done' : f.status === 'error' ? 'status-error' : 'status-queued';
-      const statusText = f.status === 'queued' ? 'Queued' : f.status === 'extracting' ? '&#128196; Reading PDF...' : f.status === 'sending' ? '<span class="spinner" style="width:12px;height:12px;border-width:2px;vertical-align:middle"></span> AI categorising...' : f.status === 'done' ? `&#10003; ${f.count||0} Qs` : '&#10007; Error';
+      const statusClass = f.status === 'extracting' ? 'status-extracting' : f.status === 'extracted' ? 'status-extracting' : f.status === 'waiting' ? 'status-queued' : f.status === 'sending' ? 'status-sending' : f.status === 'done' ? 'status-done' : f.status === 'error' ? 'status-error' : 'status-queued';
+      const statusText = f.status === 'queued' ? 'Queued' : f.status === 'extracting' ? '&#128196; Reading PDF...' : f.status === 'extracted' ? '&#10003; Text ready' : f.status === 'waiting' ? '&#9203; Waiting (rate limit)...' : f.status === 'sending' ? '<span class="spinner" style="width:12px;height:12px;border-width:2px;vertical-align:middle"></span> AI categorising...' : f.status === 'done' ? `&#10003; ${f.count||0} Qs` : '&#10007; Error';
       return `<div class="progress-item"><span class="progress-item-name">${esc(f.name)}</span><span class="progress-item-status ${statusClass}">${statusText}</span></div>`;
     }).join('');
     progressHtml = `<div class="progress-panel">
-      <div class="progress-title"><span class="spinner"></span> Processing ${processingState.total} file${processingState.total > 1 ? 's' : ''} in parallel</div>
+      <div class="progress-title"><span class="spinner"></span> Processing ${processingState.total} file${processingState.total > 1 ? 's' : ''} (staggered to avoid rate limits)</div>
       ${items}
       <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
       <div style="font-size:11px;color:var(--gray-400);margin-top:8px;text-align:right">${processingState.done}/${processingState.total} complete</div>
@@ -465,7 +465,7 @@ function renderModule(code) {
         ondrop="event.preventDefault();this.classList.remove('dragover');handleDrop(event,'${code}','paper')">
         <div class="upload-icon">&#128195;</div>
         <div class="upload-text">Drop PDF past papers here or click to browse</div>
-        <div class="upload-hint">All files processed <strong>in parallel</strong>. Text extracted locally with PDF.js, then AI categorises: typically <strong>~30s per paper</strong>.</div>
+        <div class="upload-hint">Supports multiple files. Text extracted locally, then sent to AI one at a time to avoid rate limits.</div>
       </div>
       <input type="file" id="ppInput" accept=".pdf,.txt" multiple style="display:none" onchange="handleUpload(event,'${code}','paper')">
       ${papersH}
@@ -531,20 +531,51 @@ function handleDrop(e, code, type) {
 }
 
 async function processParallel(files, code, type) {
-  processingState = { files: files.map(f => ({ name: f.name, status: 'queued', count: 0 })), done: 0, total: files.length };
+  processingState = { files: files.map(f => ({ name: f.name, status: 'queued', count: 0, text: null })), done: 0, total: files.length };
   render();
 
-  const promises = files.map((file, idx) => processOne(file, idx, code, type));
-  await Promise.allSettled(promises);
+  // PHASE 1: Extract text from ALL files locally in parallel (free, fast)
+  const extractPromises = files.map((file, idx) => extractOne(file, idx));
+  await Promise.allSettled(extractPromises);
+
+  // PHASE 2: Send to API ONE AT A TIME with delay to stay within rate limits
+  for (let idx = 0; idx < files.length; idx++) {
+    const f = processingState.files[idx];
+    if (f.status === 'error' || !f.text) { processingState.done++; render(); continue; }
+
+    // Wait between API calls to respect rate limit (30k tokens/min)
+    if (idx > 0) {
+      f.status = 'waiting'; render();
+      await sleep(12000); // 12s gap between calls
+    }
+
+    f.status = 'sending'; render();
+    try {
+      if (type === 'paper') {
+        const count = await aiExtractQuestions(f.text, files[idx].name, code);
+        f.count = count;
+      } else {
+        await aiExtractMS(f.text, files[idx].name, code);
+      }
+      f.status = 'done';
+    } catch (err) {
+      console.error(`Error: ${files[idx].name}`, err);
+      f.status = 'error';
+      showToast(`${files[idx].name}: ${err.message}`, 'error');
+    }
+    processingState.done++;
+    render();
+  }
 
   processingState = null;
   render();
   showToast(`All ${files.length} files processed!`, 'success');
 }
 
-async function processOne(file, idx, code, type) {
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function extractOne(file, idx) {
   try {
-    // Step 1: Local text extraction
     processingState.files[idx].status = 'extracting'; render();
     let text;
     if (file.name.toLowerCase().endsWith('.pdf')) {
@@ -552,24 +583,14 @@ async function processOne(file, idx, code, type) {
     } else {
       text = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('Read failed')); r.readAsText(file); });
     }
-
-    // Step 2: AI categorisation (text only, fast)
-    processingState.files[idx].status = 'sending'; render();
-    if (type === 'paper') {
-      const count = await aiExtractQuestions(text, file.name, code);
-      processingState.files[idx].count = count;
-    } else {
-      await aiExtractMS(text, file.name, code);
-    }
-
-    processingState.files[idx].status = 'done';
+    processingState.files[idx].text = text;
+    processingState.files[idx].status = 'extracted';
+    render();
   } catch (err) {
-    console.error(`Error: ${file.name}`, err);
+    console.error(`Extract error: ${file.name}`, err);
     processingState.files[idx].status = 'error';
-    showToast(`${file.name}: ${err.message}`, 'error');
+    showToast(`${file.name}: couldn't read file`, 'error');
   }
-  processingState.done++;
-  render();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
