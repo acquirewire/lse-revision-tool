@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LSE Revision Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+:root {
+  --lse-red: #D50032;
+  --lse-red-dark: #A80028;
+  --lse-red-deeper: #7A001D;
+  --lse-red-light: #FFE8EE;
+  --lse-red-soft: #FFF0F3;
+  --white: #FFFFFF;
+  --off-white: #FAFAFA;
+  --gray-50: #F8F8F8;
+  --gray-100: #F0F0F0;
+  --gray-200: #E0E0E0;
+  --gray-300: #C0C0C0;
+  --gray-400: #999;
+  --gray-600: #555;
+  --gray-700: #333;
+  --gray-900: #111;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+  --shadow-xl: 0 20px 60px rgba(0,0,0,0.15);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--off-white);
+  color: var(--gray-900);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.bg-pattern {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(213,0,50,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(213,0,50,0.03) 0%, transparent 50%);
+}
+
+.header {
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(20px);
+  background: rgba(255,255,255,0.92);
+}
+
+.header-left { display: flex; align-items: center; gap: 16px; }
+
+.logo {
+  width: 40px; height: 40px;
+  background: var(--lse-red);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px; font-weight: 700; flex-shrink: 0;
+}
+
+.header-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--gray-900); letter-spacing: -0.5px; }
+.header-subtitle { font-size: 12px; color: var(--gray-400); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+.header-actions { display: flex; gap: 10px; align-items: center; }
+
+.btn {
+  padding: 10px 20px; border-radius: var(--radius-sm); border: none;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary { background: var(--lse-red); color: white; }
+.btn-primary:hover { background: var(--lse-red-dark); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.btn-secondary { background: var(--white); color: var(--gray-700); border: 1px solid var(--gray-200); }
+.btn-secondary:hover { background: var(--gray-50); border-color: var(--gray-300); }
+.btn-ghost { background: transparent; color: var(--gray-600); }
+.btn-ghost:hover { background: var(--gray-100); color: var(--gray-900); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-xs { padding: 4px 10px; font-size: 11px; }
+.btn-danger { background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; }
+.btn-danger:hover { background: #FCA5A5; color: #991B1B; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+.main { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+.module-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; animation: fadeInUp 0.5s ease; }
+
+.module-card {
+  background: var(--white); border-radius: var(--radius-lg); padding: 28px;
+  cursor: pointer; transition: all 0.3s ease; border: 2px solid var(--gray-100);
+  position: relative; overflow: hidden;
+}
+.module-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: var(--lse-red); transform: scaleX(0); transition: transform 0.3s ease;
+}
+.module-card:hover { border-color: var(--lse-red); transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.module-card:hover::before { transform: scaleX(1); }
+
+.module-code { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--lse-red); margin-bottom: 8px; }
+.module-name { font-size: 14px; color: var(--gray-600); margin-bottom: 16px; line-height: 1.5; }
+.module-stats { display: flex; gap: 16px; font-size: 12px; color: var(--gray-400); font-weight: 500; }
+.module-stat { display: flex; align-items: center; gap: 4px; }
+.stat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--lse-red); opacity: 0.5; }
+.stat-dot.active { opacity: 1; }
+
+.breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; font-size: 13px; color: var(--gray-400); }
+.breadcrumb a { color: var(--lse-red); text-decoration: none; font-weight: 600; cursor: pointer; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.module-view { animation: fadeInUp 0.4s ease; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.section-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--gray-900); }
+
+.upload-area {
+  background: var(--white); border: 2px dashed var(--gray-200); border-radius: var(--radius-lg);
+  padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s ease; margin-bottom: 24px;
+}
+.upload-area:hover, .upload-area.dragover { border-color: var(--lse-red); background: var(--lse-red-soft); }
+.upload-icon { font-size: 36px; margin-bottom: 12px; }
+.upload-text { font-size: 14px; color: var(--gray-600); margin-bottom: 4px; }
+.upload-hint { font-size: 12px; color: var(--gray-400); }
+
+.topic-card { background: var(--white); border-radius: var(--radius-md); border: 1px solid var(--gray-100); margin-bottom: 12px; overflow: hidden; transition: box-shadow 0.2s; }
+.topic-card:hover { box-shadow: var(--shadow-sm); }
+.topic-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: background 0.15s; }
+.topic-header:hover { background: var(--gray-50); }
+.topic-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.topic-number { background: var(--lse-red); color: white; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.topic-name { font-size: 14px; font-weight: 600; color: var(--gray-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topic-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.topic-count { font-size: 12px; color: var(--gray-400); font-weight: 500; background: var(--gray-100); padding: 3px 10px; border-radius: 20px; }
+.topic-chevron { color: var(--gray-300); transition: transform 0.2s; font-size: 14px; }
+.topic-card.expanded .topic-chevron { transform: rotate(90deg); }
+.topic-questions { display: none; padding: 0 20px 16px; border-top: 1px solid var(--gray-100); }
+.topic-card.expanded .topic-questions { display: block; }
+
+.question-item { padding: 14px 0; border-bottom: 1px solid var(--gray-50); }
+.question-item:last-child { border-bottom: none; }
+.question-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.question-source { font-size: 11px; color: var(--lse-red); font-weight: 600; background: var(--lse-red-light); padding: 2px 8px; border-radius: 4px; }
+.question-text { font-size: 13px; color: var(--gray-700); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+.question-text table, .question-answer table { white-space: normal; }
+.question-answer { margin-top: 10px; padding: 12px 16px; background: #F0FDF4; border-radius: var(--radius-sm); border-left: 3px solid #22C55E; font-size: 13px; color: #14532D; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+.question-answer table { white-space: normal; }
+.question-text .katex-display, .question-answer .katex-display { white-space: normal; overflow-x: auto; }
+.question-text .katex, .question-answer .katex { white-space: normal; }
+.question-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+.panel { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--gray-100); padding: 24px; margin-bottom: 20px; }
+.panel-title { font-weight: 700; font-size: 15px; color: var(--gray-900); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+.status-bar { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
+.status-chip { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 12px 18px; display: flex; align-items: center; gap: 10px; }
+.status-number { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--lse-red); }
+.status-label { color: var(--gray-600); font-size: 12px; font-weight: 500; }
+
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 24px; backdrop-filter: blur(4px); }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--white); border-radius: var(--radius-xl); max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-xl); padding: 32px; animation: modalIn 0.3s ease; }
+.modal-title { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 8px; }
+.modal-subtitle { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
+
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--gray-200); border-top-color: var(--lse-red); border-radius: 50%; animation: spin 0.6s linear infinite; }
+
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+.toast { background: var(--gray-900); color: white; padding: 14px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; box-shadow: var(--shadow-lg); animation: slideInRight 0.3s ease; max-width: 360px; }
+.toast.success { background: #065F46; }
+.toast.error { background: #991B1B; }
+
+.ai-answer-area { width: 100%; min-height: 120px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; resize: vertical; outline: none; transition: border-color 0.2s; line-height: 1.6; }
+.ai-answer-area:focus { border-color: var(--lse-red); }
+
+.file-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--gray-50); border-radius: var(--radius-sm); margin-bottom: 6px; font-size: 12px; }
+.file-name { font-weight: 600; color: var(--gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
+.file-status { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+.file-status.done { background: #D1FAE5; color: #065F46; }
+
+.progress-panel {
+  background: var(--white); border: 2px solid var(--lse-red); border-radius: var(--radius-lg);
+  padding: 20px 24px; margin-bottom: 20px; animation: fadeInUp 0.3s ease;
+}
+.progress-title { font-weight: 700; font-size: 14px; color: var(--lse-red); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.progress-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
+.progress-item:last-child { border-bottom: none; }
+.progress-item-name { font-size: 13px; font-weight: 600; color: var(--gray-700); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.progress-item-status { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+.status-extracting { background: #EDE9FE; color: #7C3AED; }
+.status-sending { background: #DBEAFE; color: #1E40AF; }
+.status-done { background: #D1FAE5; color: #065F46; }
+.status-error { background: #FEE2E2; color: #DC2626; }
+.status-queued { background: var(--gray-100); color: var(--gray-400); }
+
+.progress-bar-bg { width: 100%; height: 6px; background: var(--gray-100); border-radius: 3px; margin-top: 14px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--lse-red); border-radius: 3px; transition: width 0.4s ease; }
+
+.uncategorised-section { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 20px; }
+.uncategorised-title { font-weight: 700; font-size: 14px; color: #92400E; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.reassign-select { padding: 4px 8px; border: 1px solid var(--gray-200); border-radius: 4px; font-size: 11px; font-family: 'DM Sans', sans-serif; outline: none; }
+
+.empty-state { text-align: center; padding: 48px 24px; color: var(--gray-400); }
+.empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state-text { font-size: 14px; font-weight: 500; }
+.empty-state-hint { font-size: 12px; margin-top: 4px; }
+
+.btn-star { background: transparent; color: var(--gray-300); border: 1px solid var(--gray-200); }
+.btn-star:hover { background: #FEF3C7; color: #D97706; border-color: #FDE68A; }
+.btn-star.active { background: #FEF3C7; color: #D97706; border-color: #FDE68A; }
+.btn-tick { background: transparent; color: var(--gray-300); border: 1px solid var(--gray-200); }
+.btn-tick:hover { background: #D1FAE5; color: #065F46; border-color: #A7F3D0; }
+.btn-tick.active { background: #D1FAE5; color: #065F46; border-color: #A7F3D0; }
+.question-item.completed { opacity: 0.55; }
+.question-item.starred { border-left: 3px solid #D97706; padding-left: 11px; }
+.topic-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 700; margin-left: 4px; }
+.topic-badge.star-badge { background: #FEF3C7; color: #D97706; }
+.topic-badge.tick-badge { background: #D1FAE5; color: #065F46; }
+
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+
+@media (max-width: 768px) {
+  .header { padding: 12px 16px; }
+  .header-title { font-size: 18px; }
+  .main { padding: 20px 16px; }
+  .module-grid { grid-template-columns: 1fr; }
+  .upload-area { padding: 24px; }
+  .status-bar { flex-direction: column; gap: 8px; }
+  .section-header { flex-direction: column; align-items: flex-start; }
+  .header-actions { gap: 6px; }
+  .btn { padding: 8px 14px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-pattern"></div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">R</div>
+    <div>
+      <div class="header-title">LSE Revision Tool</div>
+      <div class="header-subtitle">Past Paper Question Bank</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary btn-sm" onclick="importBackup()">&#8593; Import Backup</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportBackup()">&#8595; Export Backup</button>
+    <input type="file" id="backupFileInput" accept=".json" style="display:none" onchange="handleBackupImport(event)">
+  </div>
+</div>
+
+<div class="main" id="app"></div>
+<div class="toast-container" id="toasts"></div>
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOverlay(event)">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// PDF.js — client-side text extraction (never send binary to API)
+// ═══════════════════════════════════════════════════════════════════════
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pages = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items.map(item => item.str).join(' ');
+    pages.push(`[Page ${i}]\n${text}`);
+  }
+  return pages.join('\n\n');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MODULE DATA
+// ═══════════════════════════════════════════════════════════════════════
+const MODULES = {
+  AC106: {
+    name: 'Accounting and Finance', fullName: 'Introduction to Accounting',
+    topics: ['Introduction to Management Accounting','Job-order costing, cost assignment with absorption costing systems','Absorption costing and variable costing systems; Relevant costs and revenues for decision making','Cost behaviour and cost-volume-profit analysis','Activity-based costing','Budgeting','Standard costing and Variance analysis','Performance measurement']
+  },
+  FM101: {
+    name: 'Finance', fullName: 'Foundations of Finance',
+    topics: ['Introduction to financial markets','Time value of money','Project valuation','Equity valuation','Firm financing','Risk and return','Household finance','Financial instruments','Asset management']
+  },
+  ST107: {
+    name: 'Quantitative Methods (Statistics)', fullName: 'Quantitative Methods',
+    topics: ['Data visualisation and descriptive statistics','Probability theory','Discrete probability distributions','Continuous probability distributions','Sampling distributions of statistics','Point estimation','Interval estimation','Hypothesis testing','Contingency tables and the chi-squared test','Correlation and linear regression']
+  },
+  EC1B5: {
+    name: 'Economics', fullName: 'Economics (Macro)',
+    topics: ['Introduction to Macroeconomics and Measurement (GDP, real vs nominal, price indexes)','Growth Facts, Income and Growth Accounting (PPP, production function, growth accounting)','Mechanism of Growth (Malthusian theory, Solow model, institutions)','Labour Market (participation, unemployment, search theory, wage rigidity)','Credit Market (credit demand/supply, consumption/saving, bank runs)','Money and Inflation (quantity theory, Federal Reserve, Bank of England)','Economic Fluctuations (shocks, amplification, persistence, Great Recession)','Countercyclical Macroeconomic Policy (monetary and fiscal policy)','Open Economy Macroeconomics (trade, exchange rates, GDP in open economy)']
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'lse_revision_tool_v3';
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+    const v2 = localStorage.getItem('lse_revision_tool_v2');
+    if (v2) { localStorage.setItem(STORAGE_KEY, v2); return JSON.parse(v2); }
+  } catch(e) { console.error('Load error', e); }
+  return { modules: {} };
+}
+
+function saveData(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  catch(e) { console.error('Save error', e); showToast('Storage full: export a backup and clear old data', 'error'); }
+}
+
+function getModuleData(code) {
+  const data = loadData();
+  if (!data.modules[code]) { data.modules[code] = { questions: [], papers: [], markSchemes: [] }; saveData(data); }
+  return data.modules[code];
+}
+
+function setModuleData(code, moduleData) {
+  const data = loadData();
+  data.modules[code] = moduleData;
+  saveData(data);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════
+let currentView = 'home';
+let currentModule = null;
+let processingState = null;
+let expandedTopics = new Set();
+
+// ═══════════════════════════════════════════════════════════════════════
+// TOAST / MODAL
+// ═══════════════════════════════════════════════════════════════════════
+function showToast(msg, type = '') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`; t.textContent = msg; c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3500);
+}
+
+function showModal(html) { document.getElementById('modalContent').innerHTML = html; document.getElementById('modalOverlay').classList.add('active'); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+function closeModalOverlay(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════
+function render() {
+  const app = document.getElementById('app');
+  if (currentView === 'home') app.innerHTML = renderHome();
+  else app.innerHTML = renderModule(currentModule);
+  setTimeout(renderMath, 50);
+}
+
+function renderHome() {
+  const data = loadData();
+  let cards = '';
+  for (const [code, info] of Object.entries(MODULES)) {
+    const md = data.modules[code] || { questions: [], papers: [] };
+    const qC = md.questions?.length || 0, pC = md.papers?.length || 0;
+    cards += `<div class="module-card" onclick="openModule('${code}')">
+      <div class="module-code">${code}</div>
+      <div class="module-name">${info.fullName}</div>
+      <div class="module-stats">
+        <div class="module-stat"><span class="stat-dot ${qC > 0 ? 'active' : ''}"></span> ${qC} question${qC !== 1 ? 's' : ''}</div>
+        <div class="module-stat"><span class="stat-dot ${pC > 0 ? 'active' : ''}"></span> ${pC} paper${pC !== 1 ? 's' : ''}</div>
+      </div></div>`;
+  }
+  return `<div style="text-align:center;margin-bottom:36px">
+    <h1 style="font-family:'DM Serif Display',serif;font-size:32px;margin-bottom:8px">Choose a Module</h1>
+    <p style="color:var(--gray-400);font-size:14px">Upload past papers, extract questions, and revise by topic</p>
+  </div><div class="module-grid">${cards}</div>`;
+}
+
+function openModule(code) { currentModule = code; currentView = 'module'; render(); }
+function goHome() { currentView = 'home'; currentModule = null; render(); }
+
+function renderModule(code) {
+  const info = MODULES[code], md = getModuleData(code);
+  const questions = md.questions || [], papers = md.papers || [], markSchemes = md.markSchemes || [];
+  const totalQ = questions.length, answeredQ = questions.filter(q => q.answer).length;
+  const topicCounts = {}; info.topics.forEach((_, i) => topicCounts[i] = 0);
+  let uncategorised = 0;
+  questions.forEach(q => { if (q.topicIndex >= 0) topicCounts[q.topicIndex] = (topicCounts[q.topicIndex] || 0) + 1; else uncategorised++; });
+
+  // Progress tracker
+  let progressHtml = '';
+  if (processingState && processingState.total > 0) {
+    const pct = Math.round((processingState.done / processingState.total) * 100);
+    const items = processingState.files.map(f => {
+      const statusClass = f.status === 'extracting' ? 'status-extracting' : f.status === 'extracted' ? 'status-extracting' : f.status === 'waiting' ? 'status-queued' : f.status === 'sending' ? 'status-sending' : f.status === 'done' ? 'status-done' : f.status === 'error' ? 'status-error' : 'status-queued';
+      const statusText = f.status === 'queued' ? 'Queued' : f.status === 'extracting' ? '&#128196; Reading PDF...' : f.status === 'extracted' ? '&#10003; Text ready' : f.status === 'waiting' ? '&#9203; Waiting (rate limit)...' : f.status === 'sending' ? '<span class="spinner" style="width:12px;height:12px;border-width:2px;vertical-align:middle"></span> AI categorising...' : f.status === 'done' ? `&#10003; ${f.count||0} Qs` : '&#10007; Error';
+      return `<div class="progress-item"><span class="progress-item-name">${esc(f.name)}</span><span class="progress-item-status ${statusClass}">${statusText}</span></div>`;
+    }).join('');
+    progressHtml = `<div class="progress-panel">
+      <div class="progress-title"><span class="spinner"></span> Processing ${processingState.total} file${processingState.total > 1 ? 's' : ''} (staggered to avoid rate limits)</div>
+      ${items}
+      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:8px;text-align:right">${processingState.done}/${processingState.total} complete</div>
+    </div>`;
+  }
+
+  const isProcessing = processingState && processingState.done < processingState.total;
+
+  // Topics
+  let topicCards = '';
+  info.topics.forEach((topic, idx) => {
+    const count = topicCounts[idx] || 0;
+    const tQs = questions.filter(q => q.topicIndex === idx);
+    const starCount = tQs.filter(q => q.starred).length;
+    const tickCount = tQs.filter(q => q.completed).length;
+    let qHtml = tQs.map(q => renderQI(q, questions.indexOf(q), code, info)).join('');
+    const badges = `${starCount > 0 ? `<span class="topic-badge star-badge">&#9733; ${starCount}</span>` : ''}${tickCount > 0 ? `<span class="topic-badge tick-badge">&#10003; ${tickCount}/${count}</span>` : ''}`;
+    topicCards += `<div class="topic-card ${expandedTopics.has(idx)?'expanded':''}" id="topic-${idx}">
+      <div class="topic-header" onclick="toggleTopic(${idx})">
+        <div class="topic-left"><div class="topic-number">${idx+1}</div><div class="topic-name" title="${esc(topic)}">${esc(topic)}</div></div>
+        <div class="topic-right">${badges}<div class="topic-count">${count} Q${count!==1?'s':''}</div><span class="topic-chevron">&#9654;</span></div>
+      </div>
+      <div class="topic-questions">${qHtml || '<div class="empty-state" style="padding:20px"><div class="empty-state-text" style="font-size:13px;color:var(--gray-400)">No questions yet</div></div>'}</div>
+    </div>`;
+  });
+
+  // Uncategorised
+  let uncatHtml = '';
+  if (uncategorised > 0) {
+    const uQs = questions.filter(q => q.topicIndex === undefined || q.topicIndex === null || q.topicIndex < 0);
+    uncatHtml = `<div class="uncategorised-section">
+      <div class="uncategorised-title">&#9888; Uncategorised (${uncategorised})</div>
+      <div style="font-size:12px;color:#92400E;margin-bottom:12px">Use the dropdown to assign these to a topic.</div>
+      ${uQs.map(q => renderQI(q, questions.indexOf(q), code, info, true)).join('')}
+    </div>`;
+  }
+
+  const papersH = papers.map((p, i) => `<div class="file-item"><span class="file-name">&#128196; ${esc(p.name)}</span><div style="display:flex;gap:6px;align-items:center"><span class="file-status done">&#10003; ${p.questionCount||0} Qs</span><button class="btn btn-danger btn-xs" onclick="removePaper('${code}',${i})">&#215;</button></div></div>`).join('');
+  const msH = markSchemes.map((m, i) => `<div class="file-item"><span class="file-name">&#128203; ${esc(m.name)}</span><div style="display:flex;gap:6px;align-items:center"><span class="file-status done">Uploaded</span><button class="btn btn-danger btn-xs" onclick="removeMS('${code}',${i})">&#215;</button></div></div>`).join('');
+
+  return `<div class="module-view">
+    <div class="breadcrumb"><a onclick="goHome()">Modules</a><span style="color:var(--gray-300)">&#8250;</span><span style="color:var(--gray-900);font-weight:600">${code}: ${info.fullName}</span></div>
+    <div class="status-bar">
+      <div class="status-chip"><div><div class="status-number">${totalQ}</div><div class="status-label">Questions</div></div></div>
+      <div class="status-chip"><div><div class="status-number">${answeredQ}</div><div class="status-label">With Answers</div></div></div>
+      <div class="status-chip"><div><div class="status-number" style="color:#D97706">${questions.filter(q=>q.starred).length}</div><div class="status-label">&#9733; Starred</div></div></div>
+      <div class="status-chip"><div><div class="status-number" style="color:#065F46">${questions.filter(q=>q.completed).length}</div><div class="status-label">&#10003; Done</div></div></div>
+      <div class="status-chip"><div><div class="status-number">${papers.length}</div><div class="status-label">Papers</div></div></div>
+    </div>
+    ${progressHtml}
+    <div class="panel">
+      <div class="panel-title">&#128196; Upload Past Papers</div>
+      <div class="upload-area" ${isProcessing?'style="opacity:0.5;pointer-events:none"':''}
+        onclick="document.getElementById('ppInput').click()"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="event.preventDefault();this.classList.remove('dragover');handleDrop(event,'${code}','paper')">
+        <div class="upload-icon">&#128195;</div>
+        <div class="upload-text">Drop PDF past papers here or click to browse</div>
+        <div class="upload-hint">Supports multiple files. Text extracted locally, then sent to AI one at a time to avoid rate limits.</div>
+      </div>
+      <input type="file" id="ppInput" accept=".pdf,.txt" multiple style="display:none" onchange="handleUpload(event,'${code}','paper')">
+      ${papersH}
+    </div>
+    <div class="panel">
+      <div class="panel-title">&#128203; Upload Mark Schemes</div>
+      <div class="upload-area" style="padding:24px" ${isProcessing?'style="opacity:0.5;pointer-events:none"':''}
+        onclick="document.getElementById('msInput').click()"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="event.preventDefault();this.classList.remove('dragover');handleDrop(event,'${code}','ms')">
+        <div class="upload-icon" style="font-size:28px">&#128203;</div>
+        <div class="upload-text">Drop mark scheme PDFs here</div>
+        <div class="upload-hint">Answers will be matched to existing questions.</div>
+      </div>
+      <input type="file" id="msInput" accept=".pdf,.txt" multiple style="display:none" onchange="handleUpload(event,'${code}','ms')">
+      ${msH}
+    </div>
+    <div class="section-header">
+      <div class="section-title">Questions by Topic</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="expandAll()">Expand All</button>
+        <button class="btn btn-secondary btn-sm" onclick="collapseAll()">Collapse All</button>
+        ${totalQ>0?`<button class="btn btn-danger btn-sm" onclick="clearAll('${code}')">Clear All</button>`:''}
+      </div>
+    </div>
+    ${uncatHtml}${topicCards}
+    ${totalQ===0&&!isProcessing?'<div class="empty-state"><div class="empty-state-icon">&#128218;</div><div class="empty-state-text">No questions yet</div><div class="empty-state-hint">Upload past papers above to get started</div></div>':''}
+  </div>`;
+}
+
+function renderQI(q, gi, code, info, showReassign=false) {
+  const aHtml = q.answer ? `<div class="question-answer" id="answer-${gi}">${richText(q.answer)}</div>` : `<div id="answer-${gi}"></div>`;
+  const rHtml = showReassign ? `<select class="reassign-select" onchange="reassign('${code}',${gi},+this.value)"><option value="-1">Assign to topic...</option>${info.topics.map((t,i)=>`<option value="${i}">${i+1}. ${t.substring(0,45)}${t.length>45?'...':''}</option>`).join('')}</select>` : '';
+  const starClass = q.starred ? 'active' : '';
+  const tickClass = q.completed ? 'active' : '';
+  const itemClass = `question-item${q.starred ? ' starred' : ''}${q.completed ? ' completed' : ''}`;
+  return `<div class="${itemClass}" id="qi-${gi}">
+    <div class="question-meta">
+      <button class="btn btn-star btn-xs ${starClass}" onclick="event.stopPropagation();toggleStar('${code}',${gi})" title="Star (needs review)">&#9733;</button>
+      <button class="btn btn-tick btn-xs ${tickClass}" onclick="event.stopPropagation();toggleTick('${code}',${gi})" title="Mark as done">&#10003;</button>
+      ${q.source?`<span class="question-source">${esc(q.source)}</span>`:''}${q.questionNumber?`<span style="font-size:11px;color:var(--gray-400);font-weight:600">Q${q.questionNumber}</span>`:''}${rHtml}
+    </div>
+    <div class="question-text">${richText(q.text)}</div>${aHtml}
+    <div class="question-actions" id="actions-${gi}">
+      ${!q.answer?`<button class="btn btn-primary btn-xs" id="genBtn-${gi}" onclick="genAnswer('${code}',${gi})">&#9733; Generate Answer</button>`:`<button class="btn btn-ghost btn-xs" onclick="editAnswer('${code}',${gi})">&#9998; Edit Answer</button>`}
+      <button class="btn btn-ghost btn-xs" onclick="editQ('${code}',${gi})">&#9998; Edit</button>
+      <button class="btn btn-danger btn-xs" onclick="delQ('${code}',${gi})">&#128465;</button>
+      ${!showReassign?`<button class="btn btn-ghost btn-xs" onclick="moveQ('${code}',${gi})">&#8644; Move</button>`:''}
+    </div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TOPIC TOGGLE
+// ═══════════════════════════════════════════════════════════════════════
+function toggleTopic(i) {
+  if (expandedTopics.has(i)) expandedTopics.delete(i); else expandedTopics.add(i);
+  document.getElementById(`topic-${i}`).classList.toggle('expanded');
+}
+function expandAll() { const cards = document.querySelectorAll('.topic-card'); cards.forEach((c,i) => { c.classList.add('expanded'); expandedTopics.add(i); }); }
+function collapseAll() { document.querySelectorAll('.topic-card').forEach(c => c.classList.remove('expanded')); expandedTopics.clear(); }
+
+// ═══════════════════════════════════════════════════════════════════════
+// FILE UPLOAD — PARALLEL PROCESSING
+// ═══════════════════════════════════════════════════════════════════════
+function handleUpload(e, code, type) {
+  const files = Array.from(e.target.files); e.target.value = '';
+  if (files.length) processParallel(files, code, type);
+}
+function handleDrop(e, code, type) {
+  const files = Array.from(e.dataTransfer.files);
+  if (files.length) processParallel(files, code, type);
+}
+
+async function processParallel(files, code, type) {
+  processingState = { files: files.map(f => ({ name: f.name, status: 'queued', count: 0, text: null })), done: 0, total: files.length };
+  render();
+
+  // PHASE 1: Extract text from ALL files locally in parallel (free, fast)
+  const extractPromises = files.map((file, idx) => extractOne(file, idx));
+  await Promise.allSettled(extractPromises);
+
+  // PHASE 2: Send to API ONE AT A TIME with delay to stay within rate limits
+  for (let idx = 0; idx < files.length; idx++) {
+    const f = processingState.files[idx];
+    if (f.status === 'error' || !f.text) { processingState.done++; render(); continue; }
+
+    // Wait between API calls to respect rate limit (30k tokens/min)
+    if (idx > 0) {
+      f.status = 'waiting'; render();
+      await sleep(12000); // 12s gap between calls
+    }
+
+    f.status = 'sending'; render();
+    try {
+      if (type === 'paper') {
+        const count = await aiExtractQuestions(f.text, files[idx].name, code);
+        f.count = count;
+      } else {
+        await aiExtractMS(f.text, files[idx].name, code);
+      }
+      f.status = 'done';
+    } catch (err) {
+      console.error(`Error: ${files[idx].name}`, err);
+      f.status = 'error';
+      showToast(`${files[idx].name}: ${err.message}`, 'error');
+    }
+    processingState.done++;
+    render();
+  }
+
+  processingState = null;
+  render();
+  showToast(`All ${files.length} files processed!`, 'success');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function extractOne(file, idx) {
+  try {
+    processingState.files[idx].status = 'extracting'; render();
+    let text;
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      text = await extractTextFromPDF(file);
+    } else {
+      text = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('Read failed')); r.readAsText(file); });
+    }
+    processingState.files[idx].text = text;
+    processingState.files[idx].status = 'extracted';
+    render();
+  } catch (err) {
+    console.error(`Extract error: ${file.name}`, err);
+    processingState.files[idx].status = 'error';
+    showToast(`${file.name}: couldn't read file`, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AI — TEXT-ONLY (no binary, much faster)
+// ═══════════════════════════════════════════════════════════════════════
+async function aiExtractQuestions(text, fileName, code) {
+  const info = MODULES[code];
+  const topicList = info.topics.map((t, i) => `${i}: ${t}`).join('\n');
+  const truncated = text.length > 40000 ? text.substring(0, 40000) + '\n[...truncated]' : text;
+
+  const res = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8192,
+      system: 'You extract exam questions from LSE past papers and categorise them by topic. You ALWAYS split multi-part questions (e.g. Q1 with parts a-h) into individual sub-part entries, each with its own topicIndex. This is critical for topic-based revision. Respond ONLY with a valid JSON array. No markdown, no backticks, no explanation.',
+      messages: [{ role: 'user', content: `Past paper text for ${code} (${info.fullName}):\n\n${truncated}\n\nExtract ALL questions and sub-parts from this past paper. Assign each a topicIndex from:\n${topicList}\n\nCRITICAL RULES:\n1. SPLIT multi-part questions into INDIVIDUAL sub-parts. For example, if Q1 has parts (a) through (h) covering different topics, extract EACH part as a SEPARATE question entry with its own topicIndex. This is essential for topic-based revision.\n2. For a sub-part like Q1(a), use questionNumber "1a". For Q3(b)(ii), use "3b(ii)".\n3. If a sub-part itself has sub-sub-parts (e.g. Q5(a) has parts i, ii, iii that all relate to the same setup), keep those TOGETHER as one entry since they share context.\n4. Include the FULL question text for each entry. If a sub-part depends on setup text from the parent question (e.g. "A factory manufactures..." before parts i, ii, iii), include that setup text with EACH relevant sub-part so it makes sense standalone.\n5. Include marks allocation if shown.\n6. Do NOT generate answers, only extract questions.\n7. Use topicIndex -1 only if truly unclear.\n8. CRITICAL: If a question contains a TABLE or data grid, preserve it as a markdown table in the text field using pipe syntax (| Col1 | Col2 |). Tables are essential for understanding many statistics questions.\n\nJSON array only: [{"questionNumber":"1a","text":"full standalone question text","topicIndex":0}]` }]
+    })
+  });
+
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(`API ${res.status}: ${e.error?.message||'Unknown'}`); }
+
+  const data = await res.json();
+  if (!data.content) throw new Error('No content in API response');
+  const raw = data.content.map(c => c.text||'').join('');
+  let arr;
+  try {
+    arr = JSON.parse(raw.replace(/```json|```/g, '').trim());
+  } catch { throw new Error('AI returned invalid JSON: ' + raw.substring(0, 100)); }
+  if (!Array.isArray(arr)) throw new Error('Bad response');
+
+  const md = getModuleData(code);
+  const newQs = arr.map(q => ({ text: q.text, questionNumber: q.questionNumber||'', topicIndex: typeof q.topicIndex==='number'?q.topicIndex:-1, source: fileName, answer: null, dateAdded: new Date().toISOString() }));
+  md.questions = [...(md.questions||[]), ...newQs];
+  md.papers = [...(md.papers||[]), { name: fileName, questionCount: newQs.length, date: new Date().toISOString() }];
+  setModuleData(code, md);
+  return newQs.length;
+}
+
+async function aiExtractMS(text, fileName, code) {
+  const md = getModuleData(code);
+  const qs = md.questions||[];
+  if (!qs.length) { showToast('Upload past papers first', 'error'); return; }
+
+  const ref = qs.map((q,i) => `[${i}] Q${q.questionNumber}: ${q.text.substring(0,100)}`).join('\n');
+  const truncated = text.length > 40000 ? text.substring(0, 40000) + '\n[...truncated]' : text;
+
+  const res = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8192,
+      system: 'Match mark scheme answers to questions. JSON array only.',
+      messages: [{ role: 'user', content: `Mark scheme:\n${truncated}\n\nQuestions:\n${ref}\n\nJSON: [{"questionIndex":0,"answer":"..."}]` }]
+    })
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(`API ${res.status}: ${errData.error?.message || 'Unknown error'}`);
+  }
+
+  const data = await res.json();
+  if (!data.content) throw new Error('No content in API response');
+  const raw = data.content.map(c => c.text||'').join('');
+  let matches;
+  try {
+    matches = JSON.parse(raw.replace(/```json|```/g, '').trim());
+  } catch { throw new Error('AI returned invalid JSON for mark scheme'); }
+  let matched = 0;
+  if (Array.isArray(matches)) matches.forEach(m => { if (m.questionIndex>=0 && m.questionIndex<qs.length && m.answer) { qs[m.questionIndex].answer = m.answer; matched++; } });
+  md.questions = qs;
+  md.markSchemes = [...(md.markSchemes||[]), { name: fileName, date: new Date().toISOString() }];
+  setModuleData(code, md);
+  showToast(`Matched ${matched} answers from ${fileName}`, 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GENERATE ANSWER
+// ═══════════════════════════════════════════════════════════════════════
+async function genAnswer(code, qi) {
+  const md = getModuleData(code), q = md.questions[qi]; if (!q) return;
+  const info = MODULES[code], topic = q.topicIndex>=0 ? info.topics[q.topicIndex] : 'General';
+
+  // Disable the button and show inline loading
+  const btn = document.getElementById(`genBtn-${qi}`);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px"></span> Generating...'; }
+
+  try {
+    const res = await fetch('/api/claude', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2048,
+        system: `Expert LSE ${code} (${info.fullName}) tutor. Provide exam-ready model answers. Show all working for calculations. Use LaTeX with $$ delimiters for equations.`,
+        messages: [{ role:'user', content:`Topic: ${topic}\n\nQuestion: ${q.text}\n\nFull model answer:` }] }) });
+    const data = await res.json();
+    const answer = data.content.map(c=>c.text||'').join('');
+    md.questions[qi].answer = answer;
+    setModuleData(code, md);
+
+    // Update answer in-place
+    const answerEl = document.getElementById(`answer-${qi}`);
+    if (answerEl) {
+      answerEl.className = 'question-answer';
+      answerEl.innerHTML = richText(answer);
+      setTimeout(renderMath, 50);
+    }
+    // Update the button to "Edit Answer"
+    const actionsEl = document.getElementById(`actions-${qi}`);
+    if (actionsEl) {
+      const editBtn = actionsEl.querySelector('.btn-primary');
+      if (editBtn) {
+        editBtn.className = 'btn btn-ghost btn-xs';
+        editBtn.removeAttribute('id');
+        editBtn.innerHTML = '&#9998; Edit Answer';
+        editBtn.onclick = () => editAnswer(code, qi);
+      }
+    }
+    showToast('Answer generated', 'success');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '&#9733; Generate Answer'; }
+    showToast(`Failed: ${e.message}`, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// QUESTION MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════
+function editQ(code, qi) {
+  const q = getModuleData(code).questions[qi];
+  showModal(`<div class="modal-title">Edit Question</div><textarea class="ai-answer-area" id="eqt" style="min-height:160px">${esc(q.text)}</textarea><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveQ('${code}',${qi})">Save</button></div>`);
+}
+function saveQ(code, qi) { const md = getModuleData(code); md.questions[qi].text = document.getElementById('eqt').value; setModuleData(code,md); closeModal(); render(); }
+
+function editAnswer(code, qi) {
+  const q = getModuleData(code).questions[qi];
+  showModal(`<div class="modal-title">Edit Answer</div><div class="modal-subtitle">${esc(q.text.substring(0,120))}...</div><textarea class="ai-answer-area" id="eat" style="min-height:200px">${esc(q.answer||'')}</textarea><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="rmAns('${code}',${qi})">Remove</button><button class="btn btn-primary" onclick="saveA('${code}',${qi})">Save</button></div>`);
+}
+function saveA(code, qi) { const md = getModuleData(code); md.questions[qi].answer = document.getElementById('eat').value; setModuleData(code,md); closeModal(); render(); }
+function rmAns(code, qi) { const md = getModuleData(code); md.questions[qi].answer = null; setModuleData(code,md); closeModal(); render(); }
+
+function delQ(code, qi) { if (!confirm('Delete this question?')) return; const md = getModuleData(code); md.questions.splice(qi,1); setModuleData(code,md); render(); }
+function reassign(code, qi, ti) { const md = getModuleData(code); md.questions[qi].topicIndex = ti; setModuleData(code,md); render(); showToast('Reassigned','success'); }
+
+function toggleStar(code, qi) {
+  const md = getModuleData(code);
+  md.questions[qi].starred = !md.questions[qi].starred;
+  setModuleData(code, md);
+  // Update in-place
+  const el = document.getElementById(`qi-${qi}`);
+  if (el) { el.classList.toggle('starred'); el.querySelector('.btn-star').classList.toggle('active'); }
+}
+
+function toggleTick(code, qi) {
+  const md = getModuleData(code);
+  md.questions[qi].completed = !md.questions[qi].completed;
+  setModuleData(code, md);
+  const el = document.getElementById(`qi-${qi}`);
+  if (el) { el.classList.toggle('completed'); el.querySelector('.btn-tick').classList.toggle('active'); }
+}
+
+function moveQ(code, qi) {
+  const q = getModuleData(code).questions[qi], info = MODULES[code];
+  showModal(`<div class="modal-title">Move to Topic</div><div class="modal-subtitle">${esc(q.text.substring(0,120))}...</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:16px">${info.topics.map((t,i)=>`<button class="btn btn-secondary" style="justify-content:flex-start;text-align:left" onclick="reassign('${code}',${qi},${i});closeModal()"><span class="topic-number" style="width:24px;height:24px;font-size:11px">${i+1}</span>${esc(t.substring(0,55))}${t.length>55?'...':''}</button>`).join('')}</div>`);
+}
+
+function removePaper(code, i) { if (!confirm('Remove paper record?')) return; const md = getModuleData(code); md.papers.splice(i,1); setModuleData(code,md); render(); }
+function removeMS(code, i) { const md = getModuleData(code); md.markSchemes.splice(i,1); setModuleData(code,md); render(); }
+function clearAll(code) { if (!confirm(`Delete ALL questions for ${code}?`)) return; if (!confirm('Sure? Export backup first.')) return; const md = getModuleData(code); md.questions=[]; md.papers=[]; md.markSchemes=[]; setModuleData(code,md); render(); }
+
+// ═══════════════════════════════════════════════════════════════════════
+// BACKUP
+// ═══════════════════════════════════════════════════════════════════════
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(loadData(),null,2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `lse-revision-backup-${new Date().toISOString().split('T')[0]}.json`;
+  a.click(); URL.revokeObjectURL(a.href); showToast('Backup exported','success');
+}
+function importBackup() { document.getElementById('backupFileInput').click(); }
+function handleBackupImport(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      if (!data.modules) throw new Error('Invalid format');
+      const existing = loadData();
+      const existingQ = Object.values(existing.modules).reduce((s,m)=>s+(m.questions?.length||0),0);
+      if (existingQ > 0) {
+        window._pi = data;
+        showModal(`<div class="modal-title">Import Backup</div><div class="modal-subtitle">You have existing data.</div><div style="display:flex;flex-direction:column;gap:10px;margin-top:20px"><button class="btn btn-primary" onclick="doImport(true)">Replace All</button><button class="btn btn-secondary" onclick="doImport(false)">Merge</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
+      } else { saveData(data); render(); showToast('Restored','success'); }
+    } catch(err) { showToast(`Bad backup: ${err.message}`,'error'); }
+  };
+  r.readAsText(file); e.target.value = '';
+}
+function doImport(replace) {
+  const data = window._pi;
+  if (replace) saveData(data);
+  else { const ex = loadData(); for (const [c,m] of Object.entries(data.modules)) { if (!ex.modules[c]) ex.modules[c]=m; else { ex.modules[c].questions=[...(ex.modules[c].questions||[]),...(m.questions||[])]; ex.modules[c].papers=[...(ex.modules[c].papers||[]),...(m.papers||[])]; ex.modules[c].markSchemes=[...(ex.modules[c].markSchemes||[]),...(m.markSchemes||[])]; } } saveData(ex); }
+  closeModal(); render(); showToast('Imported','success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// Rich text renderer: escapes HTML but preserves LaTeX and renders markdown
+function richText(s) {
+  if (!s) return '';
+
+  // Step 1: Extract LaTeX blocks BEFORE escaping so they survive intact
+  const latexBlocks = [];
+  let t = s;
+
+  // Extract display math $$...$$ first (greedy across lines)
+  t = t.replace(/\$\$([\s\S]+?)\$\$/g, (match) => {
+    latexBlocks.push(match);
+    return `%%LATEX_${latexBlocks.length - 1}%%`;
+  });
+  // Extract inline math $...$
+  t = t.replace(/\$([^\$\n]+?)\$/g, (match) => {
+    latexBlocks.push(match);
+    return `%%LATEX_${latexBlocks.length - 1}%%`;
+  });
+  // Extract \[...\] and \(...\)
+  t = t.replace(/\\\[([\s\S]+?)\\\]/g, (match) => {
+    latexBlocks.push(match);
+    return `%%LATEX_${latexBlocks.length - 1}%%`;
+  });
+  t = t.replace(/\\\(([\s\S]+?)\\\)/g, (match) => {
+    latexBlocks.push(match);
+    return `%%LATEX_${latexBlocks.length - 1}%%`;
+  });
+
+  // Step 2: HTML-escape the non-LaTeX parts
+  t = esc(t);
+
+  // Step 3: Restore LaTeX blocks (unescaped)
+  t = t.replace(/%%LATEX_(\d+)%%/g, (_, idx) => latexBlocks[parseInt(idx)]);
+
+  // Step 4: Markdown formatting
+  t = renderMarkdownTables(t);
+  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/^## (.+)$/gm, '<div style="font-weight:700;font-size:14px;margin:8px 0 4px">$1</div>');
+  t = t.replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #e0e0e0;margin:8px 0">');
+  // Convert markdown bullet points
+  t = t.replace(/^[•\-\*] (.+)$/gm, '<div style="padding-left:16px">&#8226; $1</div>');
+
+  return t;
+}
+
+function renderMarkdownTables(text) {
+  // Match markdown table blocks (header | separator | rows)
+  return text.replace(/((?:^|\n)(?:\|.+\|(?:\n|$))+)/g, (match) => {
+    const lines = match.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) return match;
+    // Check if second line is separator (|---|---|)
+    const isSep = /^\|[\s\-:|\s]+\|$/.test(lines[1]);
+    const startIdx = isSep ? 2 : 0;
+    const headerLine = isSep ? lines[0] : null;
+
+    let html = '<table style="border-collapse:collapse;width:100%;margin:8px 0;font-size:12px">';
+    if (headerLine) {
+      const cells = headerLine.split('|').filter(c => c.trim());
+      html += '<thead><tr>' + cells.map(c => `<th style="border:1px solid #ddd;padding:6px 10px;background:#f5f5f5;font-weight:600;text-align:left">${c.trim()}</th>`).join('') + '</tr></thead>';
+    }
+    html += '<tbody>';
+    for (let i = startIdx; i < lines.length; i++) {
+      const cells = lines[i].split('|').filter(c => c.trim());
+      html += '<tr>' + cells.map(c => `<td style="border:1px solid #ddd;padding:6px 10px">${c.trim()}</td>`).join('') + '</tr>';
+    }
+    html += '</tbody></table>';
+    return html;
+  });
+}
+
+// Call after each render to process LaTeX
+function renderMath() {
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(document.getElementById('app'), {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+render();
+</script>
+</body>
+</html>
